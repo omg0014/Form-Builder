@@ -113,173 +113,224 @@
     </div>
   </div>
   <div id="root" class="p-4"></div>
+<script type="text/babel">
+  const { useState, useEffect } = React;
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  function App() {
+    const [history, setHistory] = useState({
+      past: [],
+      present: JSON.parse(localStorage.getItem('formFields')) || [],
+      future: [],
+    });
+    const [templateClass, setTemplateClass] = useState('');
+    const [formBg] = useState(localStorage.getItem('formBg') || '');
+    const [isPreview, setIsPreview] = useState(false);
+    const [copiedLink, setCopiedLink] = useState('');
 
-    function App() {
-      const [fields, setFields] = useState(() => JSON.parse(localStorage.getItem('formFields')) || []);
-      const [templateClass, setTemplateClass] = useState('');
-      const [isPreview, setIsPreview] = useState(false);
-      const [copiedLink, setCopiedLink] = useState('');
+    const { past, present: fields, future } = history;
 
-      useEffect(() => {
-        document.body.className = localStorage.getItem('theme') || 'light';
-      }, []);
+    useEffect(() => {
+      document.body.className = localStorage.getItem('theme') || 'light';
+    }, []);
 
-      useEffect(() => {
-        localStorage.setItem('formFields', JSON.stringify(fields));
-      }, [fields]);
+    useEffect(() => {
+      localStorage.setItem('formFields', JSON.stringify(fields));
+    }, [fields]);
 
-      function addField(type) {
-        const id = Date.now();
-        setFields([...fields, { id, type, label: '', placeholder: '', required: false, min: '', max: '', options: '' }]);
-      }
-
-      function updateField(id, changes) {
-        setFields(fields.map(f => (f.id === id ? { ...f, ...changes } : f)));
-      }
-
-      function deleteField(id) {
-        setFields(fields.filter(f => f.id !== id));
-      }
-
-      function applyTemplate(template) {
-        const templates = {
-          contact: [
-            { id: 1, type: 'Text', label: 'Name', placeholder: 'Enter your name', required: true },
-            { id: 2, type: 'Text', label: 'Email', placeholder: 'Enter your email', required: true },
-            { id: 3, type: 'Textarea', label: 'Message', placeholder: 'Your message', required: true },
-          ],
-          feedback: [
-            { id: 4, type: 'Text', label: 'Full Name', placeholder: '', required: true },
-            { id: 5, type: 'Textarea', label: 'Feedback', placeholder: '', required: true },
-          ],
-          registration: [
-            { id: 6, type: 'Text', label: 'First Name', required: true },
-            { id: 7, type: 'Text', label: 'Last Name', required: true },
-            { id: 8, type: 'Date', label: 'DOB', required: true },
-          ],
-          survey: [
-            { id: 9, type: 'Text', label: 'Age', required: true },
-            { id: 10, type: 'Textarea', label: 'Opinion', required: false },
-          ],
-        };
-        setFields(templates[template]);
-        setTemplateClass(`template-${template}`);
-      }
-
-      function onSubmit(e) {
-        e.preventDefault();
-        alert('You have successfully filled the form!');
-        window.location.reload();
-      }
-
-      function generateLink(editable = false) {
-        const formId = Date.now().toString();
-        localStorage.setItem(`form-${formId}`, JSON.stringify(fields));
-        const url = `${window.location.origin}${window.location.pathname}?formId=${formId}${editable ? '&edit=true' : ''}`;
-        navigator.clipboard.writeText(url);
-        setCopiedLink(url);
-      }
-
-      useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const formId = params.get('formId');
-        const isEdit = params.get('edit') === 'true';
-        if (formId) {
-          const savedForm = JSON.parse(localStorage.getItem(`form-${formId}`));
-          if (savedForm) {
-            setFields(savedForm);
-            setIsPreview(!isEdit);
-          }
-        }
-      }, []);
-
-      return (
-        <div className="max-w-2xl mx-auto">
-          {!isPreview && (
-            <>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Text')}>Text</button>
-                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Textarea')}>Textarea</button>
-                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Date')}>Date</button>
-                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Dropdown')}>Dropdown</button>
-                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Checkbox')}>Checkbox</button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <button onClick={() => applyTemplate('contact')} className="template-contact">Contact Us</button>
-                <button onClick={() => applyTemplate('feedback')} className="template-feedback">Feedback</button>
-                <button onClick={() => applyTemplate('registration')} className="template-registration">Registration</button>
-                <button onClick={() => applyTemplate('survey')} className="template-survey">Survey</button>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => generateLink(false)}>Copy View Link</button>
-                <button className="bg-yellow-600 text-white px-3 py-1 rounded" onClick={() => generateLink(true)}>Copy Editable Link</button>
-              </div>
-              {fields.map(field => (
-                <div key={field.id} className="field-card">
-                  <input type="text" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.label} onChange={e => updateField(field.id, { label: e.target.value })} placeholder="Label" />
-                  {field.type !== 'Date' && (
-                    <input type="text" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.placeholder} onChange={e => updateField(field.id, { placeholder: e.target.value })} placeholder="Placeholder" />
-                  )}
-                  {['Text', 'Textarea'].includes(field.type) && (
-                    <>
-                      <input type="number" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.min} onChange={e => updateField(field.id, { min: e.target.value })} placeholder="Min Length" />
-                      <input type="number" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.max} onChange={e => updateField(field.id, { max: e.target.value })} placeholder="Max Length" />
-                    </>
-                  )}
-                  {field.type === 'Dropdown' && (
-                    <input type="text" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.options} onChange={e => updateField(field.id, { options: e.target.value })} placeholder="Options (comma separated)" />
-                  )}
-                  <label className="inline-flex items-center">
-                    <input type="checkbox" className="mr-2" checked={field.required} onChange={e => updateField(field.id, { required: e.target.checked })} />
-                    Required
-                  </label>
-                  <button className="ml-4 text-red-500 hover:underline" onClick={() => deleteField(field.id)}>Delete</button>
-                </div>
-              ))}
-              {copiedLink && <div className="copy-link-box">{copiedLink}</div>}
-            </>
-          )}
-
-          {fields.length > 0 && (
-            <form onSubmit={onSubmit} className={`form-preview mt-10 ${templateClass}`}>
-              {fields.map(field => (
-                <div key={field.id} className="mb-4">
-                  <label className="block font-bold mb-1">{field.label}</label>
-                  {field.type === 'Text' && <input type="text" required={field.required} placeholder={field.placeholder} minLength={field.min} maxLength={field.max} className="w-full border p-2 rounded" />}
-                  {field.type === 'Textarea' && <textarea required={field.required} placeholder={field.placeholder} minLength={field.min} maxLength={field.max} className="w-full border p-2 rounded"></textarea>}
-                  {field.type === 'Date' && <input type="date" required={field.required} className="w-full border p-2 rounded" />}
-                  {field.type === 'Dropdown' && (
-                    <select required={field.required} className="w-full border p-2 rounded">
-                      <option value="">Select</option>
-                      {field.options?.split(',').map((opt, i) => <option key={i} value={opt.trim()}>{opt.trim()}</option>)}
-                    </select>
-                  )}
-                  {field.type === 'Checkbox' && (
-                    <div className="flex items-center">
-                      <input type="checkbox" required={field.required} className="mr-2" />
-                      <span>{field.placeholder || 'Check me'}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isPreview && <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded">Submit</button>}
-            </form>
-          )}
-        </div>
-      );
+    function setFields(newFields) {
+      setHistory({
+        past: [...past, fields],
+        present: newFields,
+        future: [],
+      });
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    function undo() {
+      if (past.length === 0) return;
+      const previous = past[past.length - 1];
+      const newPast = past.slice(0, past.length - 1);
+      setHistory({
+        past: newPast,
+        present: previous,
+        future: [fields, ...future],
+      });
+    }
 
-    document.getElementById('themeToggle').addEventListener('click', () => {
-      const current = document.body.className;
-      const next = current === 'light' ? 'dark' : 'light';
-      document.body.className = next;
-      localStorage.setItem('theme', next);
-    });
-  </script>
+    function redo() {
+      if (future.length === 0) return;
+      const next = future[0];
+      const newFuture = future.slice(1);
+      setHistory({
+        past: [...past, fields],
+        present: next,
+        future: newFuture,
+      });
+    }
+
+    useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const formId = params.get('formId');
+      const isEdit = params.get('edit') === 'true';
+      if (formId) {
+        const savedForm = JSON.parse(localStorage.getItem(`form-${formId}`));
+        if (savedForm) {
+          setHistory({ past: [], present: savedForm, future: [] });
+          setIsPreview(!isEdit);
+        }
+      }
+    }, []);
+
+    useEffect(() => {
+      const handleKey = (e) => {
+        if (e.ctrlKey && e.key === 'z') undo();
+        if (e.ctrlKey && e.key === 'y') redo();
+      };
+      window.addEventListener('keydown', handleKey);
+      return () => window.removeEventListener('keydown', handleKey);
+    }, [past, future]);
+
+    function addField(type) {
+      const id = Date.now();
+      setFields([...fields, { id, type, label: '', placeholder: '', required: false, min: '', max: '', options: '' }]);
+    }
+
+    function updateField(id, changes) {
+      setFields(fields.map(f => (f.id === id ? { ...f, ...changes } : f)));
+    }
+
+    function deleteField(id) {
+      setFields(fields.filter(f => f.id !== id));
+    }
+
+    function applyTemplate(template) {
+      const templates = {
+        contact: [
+          { id: 1, type: 'Text', label: 'Name', placeholder: 'Enter your name', required: true },
+          { id: 2, type: 'Text', label: 'Email', placeholder: 'Enter your email', required: true },
+          { id: 3, type: 'Textarea', label: 'Message', placeholder: 'Your message', required: true },
+        ],
+        feedback: [
+          { id: 4, type: 'Text', label: 'Full Name', placeholder: '', required: true },
+          { id: 5, type: 'Textarea', label: 'Feedback', placeholder: '', required: true },
+        ],
+        registration: [
+          { id: 6, type: 'Text', label: 'First Name', required: true },
+          { id: 7, type: 'Text', label: 'Last Name', required: true },
+          { id: 8, type: 'Date', label: 'DOB', required: true },
+        ],
+        survey: [
+          { id: 9, type: 'Text', label: 'Age', required: true },
+          { id: 10, type: 'Textarea', label: 'Opinion', required: false },
+        ],
+      };
+      setFields(templates[template]);
+      setTemplateClass(`template-${template}`);
+    }
+
+    function onSubmit(e) {
+      e.preventDefault();
+      alert('You have successfully filled the form!');
+      window.location.reload();
+    }
+
+    function generateLink(editable = false) {
+      const formId = Date.now().toString();
+      localStorage.setItem(`form-${formId}`, JSON.stringify(fields));
+      const url = `${window.location.origin}${window.location.pathname}?formId=${formId}${editable ? '&edit=true' : ''}`;
+      navigator.clipboard.writeText(url);
+      setCopiedLink(url);
+    }
+
+    return (
+      <div className="max-w-2xl mx-auto">
+        {!isPreview && (
+          <>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Text')}>Text</button>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Textarea')}>Textarea</button>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Date')}>Date</button>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Dropdown')}>Dropdown</button>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => addField('Checkbox')}>Checkbox</button>
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => applyTemplate('contact')} className="template-contact">Contact Us</button>
+              <button onClick={() => applyTemplate('feedback')} className="template-feedback">Feedback</button>
+              <button onClick={() => applyTemplate('registration')} className="template-registration">Registration</button>
+              <button onClick={() => applyTemplate('survey')} className="template-survey">Survey</button>
+            </div>
+
+            <div className="flex gap-2 flex-wrap mb-4">
+              <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => generateLink(false)}>Copy View Link</button>
+              <button className="bg-yellow-600 text-white px-3 py-1 rounded" onClick={() => generateLink(true)}>Copy Editable Link</button>
+              <button className="bg-gray-600 text-white px-3 py-1 rounded" onClick={undo} disabled={past.length === 0}>Undo</button>
+              <button className="bg-gray-600 text-white px-3 py-1 rounded" onClick={redo} disabled={future.length === 0}>Redo</button>
+            </div>
+
+            {fields.map(field => (
+              <div key={field.id} className="field-card">
+                <input type="text" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.label} onChange={e => updateField(field.id, { label: e.target.value })} placeholder="Label" />
+                {field.type !== 'Date' && (
+                  <input type="text" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.placeholder} onChange={e => updateField(field.id, { placeholder: e.target.value })} placeholder="Placeholder" />
+                )}
+                {['Text', 'Textarea'].includes(field.type) && (
+                  <>
+                    <input type="number" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.min} onChange={e => updateField(field.id, { min: e.target.value })} placeholder="Min Length" />
+                    <input type="number" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.max} onChange={e => updateField(field.id, { max: e.target.value })} placeholder="Max Length" />
+                  </>
+                )}
+                {field.type === 'Dropdown' && (
+                  <input type="text" className="w-full border rounded p-2 mb-2 dark:bg-gray-700 dark:text-white" value={field.options} onChange={e => updateField(field.id, { options: e.target.value })} placeholder="Options (comma separated)" />
+                )}
+                <label className="inline-flex items-center">
+                  <input type="checkbox" className="mr-2" checked={field.required} onChange={e => updateField(field.id, { required: e.target.checked })} />
+                  Required
+                </label>
+                <button className="ml-4 text-red-500 hover:underline" onClick={() => deleteField(field.id)}>Delete</button>
+              </div>
+            ))}
+            {copiedLink && <div className="copy-link-box">{copiedLink}</div>}
+          </>
+        )}
+
+        {fields.length > 0 && (
+          <form onSubmit={onSubmit} className={`form-preview mt-10 ${templateClass} ${formBg}`}>
+            {fields.map(field => (
+              <div key={field.id} className="mb-4">
+                <label className="block font-bold mb-1">{field.label}</label>
+                {field.type === 'Text' && <input type="text" required={field.required} placeholder={field.placeholder} minLength={field.min} maxLength={field.max} className="w-full border p-2 rounded" />}
+                {field.type === 'Textarea' && <textarea required={field.required} placeholder={field.placeholder} minLength={field.min} maxLength={field.max} className="w-full border p-2 rounded"></textarea>}
+                {field.type === 'Date' && <input type="date" required={field.required} className="w-full border p-2 rounded" />}
+                {field.type === 'Dropdown' && (
+                  <select required={field.required} className="w-full border p-2 rounded">
+                    <option value="">Select</option>
+                    {field.options?.split(',').map((opt, i) => <option key={i} value={opt.trim()}>{opt.trim()}</option>)}
+                  </select>
+                )}
+                {field.type === 'Checkbox' && (
+                  <div className="flex items-center">
+                    <input type="checkbox" required={field.required} className="mr-2" />
+                    <span>{field.placeholder || 'Check me'}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isPreview && <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded">Submit</button>}
+          </form>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const current = document.body.className;
+    const next = current === 'light' ? 'dark' : 'light';
+    document.body.className = next;
+    localStorage.setItem('theme', next);
+  });
+</script>
+
 </body>
 </html>
