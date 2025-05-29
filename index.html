@@ -1,3 +1,4 @@
+<!-- [ FULL UPDATED HTML CODE — scroll to view entire file ] -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +10,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
+    /* [ ... keep all your existing styles unchanged ... ] */
     body {
       transition: background-color 0.3s, color 0.3s;
     }
@@ -104,367 +106,285 @@
     </div>
   </div>
   <div id="root" class="p-4"></div>
+
 <script type="text/babel">
-  const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef } = React;
 
-  function App() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('mode'); // 'preview' or 'edit' or null
-    const formId = urlParams.get('id');
+function App() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get('mode');
+  const formId = urlParams.get('id');
+  const [history, setHistory] = useState({ past: [], present: [], future: [] });
+  const [templateClass, setTemplateClass] = useState('');
+  const [formBg] = useState(localStorage.getItem('formBg') || '');
+  const [copiedLink, setCopiedLink] = useState('');
+  const isPreview = mode === 'preview' || (mode !== 'edit' && !!formId);
+  const { past, present: fields, future } = history;
+  const formRef = useRef(null);
+  const [selectedFieldId, setSelectedFieldId] = useState(null);
 
-    const [history, setHistory] = useState({
-      past: [],
-      present: [],
-      future: [],
-    });
-    const [templateClass, setTemplateClass] = useState('');
-    const [formBg] = useState(localStorage.getItem('formBg') || '');
-    const isPreview = mode === 'preview' || (mode !== 'edit' && !!formId);
-    const [copiedLink, setCopiedLink] = useState('');
-    const { past, present: fields, future } = history;
+  useEffect(() => {
+    document.body.className = localStorage.getItem('theme') || 'light';
+  }, []);
 
-    // refs to form inputs for clearing on submit
-    const formRef = useRef(null);
-
-    useEffect(() => {
-      document.body.className = localStorage.getItem('theme') || 'light';
-    }, []);
-
-    useEffect(() => {
-      if (formId) {
-        const savedForm = localStorage.getItem(formId);
-        if (savedForm) {
-          setHistory({ past: [], present: JSON.parse(savedForm), future: [] });
-        }
-      } else {
-        if (!isPreview) {
-          const saved = localStorage.getItem('formFields');
-          if (saved) {
-            setHistory({ past: [], present: JSON.parse(saved), future: [] });
-          }
-        }
-      }
-    }, [formId]);
-
-    useEffect(() => {
-      if (!isPreview) {
-        localStorage.setItem('formFields', JSON.stringify(fields));
-      }
-    }, [fields]);
-
-    function setFields(newFields) {
-      setHistory({
-        past: [...past, fields],
-        present: newFields,
-        future: [],
-      });
+  useEffect(() => {
+    if (formId) {
+      const savedForm = localStorage.getItem(formId);
+      if (savedForm) setHistory({ past: [], present: JSON.parse(savedForm), future: [] });
+    } else if (!isPreview) {
+      const saved = localStorage.getItem('formFields');
+      if (saved) setHistory({ past: [], present: JSON.parse(saved), future: [] });
     }
+  }, [formId]);
 
-    function undo() {
-      if (past.length === 0) return;
-      const previous = past[past.length - 1];
-      const newPast = past.slice(0, past.length - 1);
-      setHistory({
-        past: newPast,
-        present: previous,
-        future: [fields, ...future],
-      });
-    }
+  useEffect(() => {
+    if (!isPreview) localStorage.setItem('formFields', JSON.stringify(fields));
+  }, [fields]);
 
-    function redo() {
-      if (future.length === 0) return;
-      const next = future[0];
-      const newFuture = future.slice(1);
-      setHistory({
-        past: [...past, fields],
-        present: next,
-        future: newFuture,
-      });
-    }
+  function setFields(newFields) {
+    setHistory({ past: [...past, fields], present: newFields, future: [] });
+  }
 
-    useEffect(() => {
-      const handleKey = (e) => {
-        if (e.ctrlKey && e.key === 'z') undo();
-        if (e.ctrlKey && e.key === 'y') redo();
-      };
-      window.addEventListener('keydown', handleKey);
-      return () => window.removeEventListener('keydown', handleKey);
-    }, [past, future]);
+  function undo() {
+    if (past.length === 0) return;
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, -1);
+    setHistory({ past: newPast, present: previous, future: [fields, ...future] });
+  }
 
-    function addField(type) {
-      const id = Date.now();
-      setFields([...fields, { id, type, label: '', placeholder: '', required: false, min: '', max: '', options: '' }]);
-    }
+  function redo() {
+    if (future.length === 0) return;
+    const next = future[0];
+    const newFuture = future.slice(1);
+    setHistory({ past: [...past, fields], present: next, future: newFuture });
+  }
 
-    function updateField(id, changes) {
-      setFields(fields.map(f => (f.id === id ? { ...f, ...changes } : f)));
-    }
-
-    function deleteField(id) {
-      setFields(fields.filter(f => f.id !== id));
-    }
-
-    function applyTemplate(template) {
-      const templates = {
-        contact: [
-          { id: 1, type: 'Text', label: 'Name', placeholder: 'Enter your name', required: true },
-          { id: 2, type: 'Text', label: 'Email', placeholder: 'Enter your email', required: true },
-          { id: 3, type: 'Textarea', label: 'Message', placeholder: 'Your message', required: true },
-        ],
-        feedback: [
-          { id: 4, type: 'Text', label: 'Full Name', placeholder: '', required: true },
-          { id: 5, type: 'Textarea', label: 'Feedback', placeholder: '', required: true },
-        ],
-        registration: [
-          { id: 6, type: 'Text', label: 'First Name', required: true },
-          { id: 7, type: 'Text', label: 'Last Name', required: true },
-          { id: 8, type: 'Date', label: 'DOB', required: true },
-        ],
-        survey: [
-          { id: 9, type: 'Text', label: 'Age', required: true },
-          { id: 10, type: 'Textarea', label: 'Opinion', required: false },
-        ],
-      };
-      setFields(templates[template]);
-      setTemplateClass(`template-${template}`);
-    }
-
-    function onSubmit(e) {
-      e.preventDefault();
-      alert('Form submitted successfully!');
-      // Clear all input fields in the form
-      if (formRef.current) {
-        formRef.current.reset();
-      }
-    }
-
-    function generateLink() {
-      const id = 'form_' + Date.now();
-      localStorage.setItem(id, JSON.stringify(fields));
-      const url = `${window.location.origin}${window.location.pathname}?mode=preview&id=${id}`;
-      navigator.clipboard.writeText(url);
-      setCopiedLink(url);
-    }
-
-    const handleDrop = (e) => {
-      e.preventDefault();
-      let type = e.dataTransfer.getData('fieldType');
-      if (!type && e.target?.dataset?.fieldType) {
-        type = e.target.dataset.fieldType;
-      }
-      if (type) addField(type);
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.ctrlKey && e.key === 'z') undo();
+      if (e.ctrlKey && e.key === 'y') redo();
     };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [past, future]);
 
-    const allowDrop = (e) => e.preventDefault();
+  function addField(type) {
+    const id = Date.now();
+    setFields([...fields, { id, type, label: '', placeholder: '', required: false, min: '', max: '', options: '' }]);
+  }
 
-    const fieldTypes = ['Text', 'Textarea', 'Date', 'Dropdown', 'Checkbox'];
+  function updateField(id, changes) {
+    setFields(fields.map(f => (f.id === id ? { ...f, ...changes } : f)));
+  }
 
-    return (
-      <div className="max-w-2xl mx-auto">
-        {!isPreview && (
-          <>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {fieldTypes.map(ft => (
-                <button
-                  key={ft}
-                  draggable
-                  onDragStart={e => e.dataTransfer.setData('fieldType', ft)}
-                  onTouchStart={e => e.currentTarget.dataset.fieldType = ft}
-                  className="bg-blue-600 text-white px-3 py-1 rounded"
-                >
-                  Add {ft}
-                </button>
-              ))}
-            </div>
+  function deleteField(id) {
+    setFields(fields.filter(f => f.id !== id));
+  }
 
-            <div className="mb-4 flex gap-2 flex-wrap">
-              <button onClick={() => applyTemplate('contact')} className="template-contact">Contact Form</button>
-              <button onClick={() => applyTemplate('feedback')} className="template-feedback">Feedback Form</button>
-              <button onClick={() => applyTemplate('registration')} className="template-registration">Registration Form</button>
-              <button onClick={() => applyTemplate('survey')} className="template-survey">Survey Form</button>
-            </div>
+  function applyTemplate(template) {
+    const templates = {
+      contact: [
+        { id: 1, type: 'Text', label: 'Name', placeholder: 'Enter your name', required: true },
+        { id: 2, type: 'Text', label: 'Email', placeholder: 'Enter your email', required: true },
+        { id: 3, type: 'Textarea', label: 'Message', placeholder: 'Your message', required: true },
+      ],
+      feedback: [
+        { id: 4, type: 'Text', label: 'Full Name', placeholder: '', required: true },
+        { id: 5, type: 'Textarea', label: 'Feedback', placeholder: '', required: true },
+      ],
+      registration: [
+        { id: 6, type: 'Text', label: 'First Name', required: true },
+        { id: 7, type: 'Text', label: 'Last Name', required: true },
+        { id: 8, type: 'Date', label: 'DOB', required: true },
+      ],
+      survey: [
+        { id: 9, type: 'Text', label: 'Age', required: true },
+        { id: 10, type: 'Textarea', label: 'Opinion', required: false },
+      ],
+    };
+    setFields(templates[template]);
+    setTemplateClass(`template-${template}`);
+  }
 
-            <div
-              className={`p-4 rounded shadow ${formBg} min-h-[200px]`}
-              onDrop={handleDrop}
-              onDragOver={allowDrop}
-              onTouchMove={allowDrop}
-            >
-              {fields.length === 0 && (
-                <p className="text-gray-400">Drag and drop a field here or click buttons above</p>
-              )}
-              {fields.map(field => (
-                <div
-                  key={field.id}
-                  className="field-card flex flex-col"
-                  draggable
-                  onDragStart={e => e.dataTransfer.setData('fieldId', field.id)}
-                  onTouchStart={e => e.currentTarget.dataset.fieldId = field.id}
-                >
+  function onSubmit(e) {
+    e.preventDefault();
+    alert('Form submitted successfully!');
+    if (formRef.current) formRef.current.reset();
+  }
+
+  function generateLink() {
+    const id = 'form_' + Date.now();
+    localStorage.setItem(id, JSON.stringify(fields));
+    const url = `${window.location.origin}${window.location.pathname}?mode=preview&id=${id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(url);
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    let type = e.dataTransfer.getData('fieldType');
+    if (!type && e.target?.dataset?.fieldType) {
+      type = e.target.dataset.fieldType;
+    }
+    if (type) addField(type);
+  };
+
+  const allowDrop = (e) => e.preventDefault();
+
+  const swapFields = (id1, id2) => {
+    const idx1 = fields.findIndex(f => f.id === id1);
+    const idx2 = fields.findIndex(f => f.id === id2);
+    if (idx1 !== -1 && idx2 !== -1) {
+      const updated = [...fields];
+      [updated[idx1], updated[idx2]] = [updated[idx2], updated[idx1]];
+      setFields(updated);
+    }
+  };
+
+  const fieldTypes = ['Text', 'Textarea', 'Date', 'Dropdown', 'Checkbox'];
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      {!isPreview && (
+        <>
+          <div className="mb-2 text-sm text-gray-600">
+            <strong>Desktop:</strong> Drag & drop fields. <strong>Mobile:</strong> Tap two fields to reorder them.
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {fieldTypes.map(ft => (
+              <button
+                key={ft}
+                draggable
+                onDragStart={e => e.dataTransfer.setData('fieldType', ft)}
+                className="bg-blue-600 text-white px-3 py-1 rounded"
+              >
+                Add {ft}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-4 flex gap-2 flex-wrap">
+            <button onClick={() => applyTemplate('contact')} className="template-contact">Contact Form</button>
+            <button onClick={() => applyTemplate('feedback')} className="template-feedback">Feedback Form</button>
+            <button onClick={() => applyTemplate('registration')} className="template-registration">Registration Form</button>
+            <button onClick={() => applyTemplate('survey')} className="template-survey">Survey Form</button>
+          </div>
+
+          <div
+            className={`p-4 rounded shadow ${formBg} min-h-[200px]`}
+            onDrop={handleDrop}
+            onDragOver={allowDrop}
+          >
+            {fields.length === 0 && (
+              <p className="text-gray-400">Drag and drop a field here or click buttons above</p>
+            )}
+            {fields.map(field => (
+              <div
+                key={field.id}
+                className={`field-card flex flex-col ${selectedFieldId === field.id ? 'ring-2 ring-indigo-500' : ''}`}
+                draggable
+                onDragStart={e => e.dataTransfer.setData('fieldId', field.id)}
+                onTouchStart={() => {
+                  if (selectedFieldId && selectedFieldId !== field.id) {
+                    swapFields(selectedFieldId, field.id);
+                    setSelectedFieldId(null);
+                  } else {
+                    setSelectedFieldId(field.id);
+                  }
+                }}
+              >
+                <input
+                  className="border rounded p-1 mb-1"
+                  type="text"
+                  placeholder="Label"
+                  value={field.label}
+                  onChange={e => updateField(field.id, { label: e.target.value })}
+                />
+                {field.type === 'Dropdown' && (
                   <input
                     className="border rounded p-1 mb-1"
                     type="text"
-                    placeholder="Label"
-                    value={field.label}
-                    onChange={e => updateField(field.id, { label: e.target.value })}
+                    placeholder="Options comma separated"
+                    value={field.options || ''}
+                    onChange={e => updateField(field.id, { options: e.target.value })}
                   />
-                  {field.type === 'Dropdown' && (
-                    <input
-                      className="border rounded p-1 mb-1"
-                      type="text"
-                      placeholder="Options comma separated"
-                      value={field.options || ''}
-                      onChange={e => updateField(field.id, { options: e.target.value })}
-                    />
-                  )}
+                )}
+                <input
+                  className="border rounded p-1 mb-1"
+                  placeholder="Placeholder"
+                  value={field.placeholder}
+                  onChange={e => updateField(field.id, { placeholder: e.target.value })}
+                />
+                <label className="mb-1">
                   <input
-                    className="border rounded p-1 mb-1"
-                    placeholder="Placeholder"
-                    value={field.placeholder}
-                    onChange={e => updateField(field.id, { placeholder: e.target.value })}
-                  />
-                  <label className="mb-1">
-                    <input
-                      type="checkbox"
-                      checked={field.required}
-                      onChange={e => updateField(field.id, { required: e.target.checked })}
-                    />{' '}
-                    Required
-                  </label>
-                  <button
-                    className="bg-red-600 text-white px-2 py-1 rounded self-start"
-                    onClick={() => deleteField(field.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
+                    type="checkbox"
+                    checked={field.required}
+                    onChange={e => updateField(field.id, { required: e.target.checked })}
+                  /> Required
+                </label>
+                <button
+                  className="bg-red-600 text-white px-2 py-1 rounded self-start"
+                  onClick={() => deleteField(field.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
 
-            <div className="flex gap-2 mt-4 flex-wrap">
-              <button
-                onClick={undo}
-                disabled={past.length === 0}
-                className={`px-4 py-2 rounded ${past.length === 0 ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'}`}
-              >
-                Undo
-              </button>
-              <button
-                onClick={redo}
-                disabled={future.length === 0}
-                className={`px-4 py-2 rounded ${future.length === 0 ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'}`}
-              >
-                Redo
-              </button>
-              <button
-                onClick={generateLink}
-                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-              >
-                Copy Shareable Link
-              </button>
-            </div>
-            {copiedLink && <div className="copy-link-box">{copiedLink}</div>}
-          </>
-        )}
-
-        {fields.length > 0 && (
-          <form
-            ref={formRef}
-            className={`mt-8 p-6 rounded shadow form-preview ${templateClass}`}
-            onSubmit={onSubmit}
-          >
-            {fields.map(field => {
-              if (field.type === 'Text') {
-                return (
-                  <div key={field.id} className="mb-4">
-                    <label className="block mb-1 font-semibold">{field.label}{field.required ? ' *' : ''}</label>
-                    <input
-                      type="text"
-                      placeholder={field.placeholder}
-                      required={field.required}
-                      className="border rounded p-2 w-full"
-                    />
-                  </div>
-                );
-              }
-              if (field.type === 'Textarea') {
-                return (
-                  <div key={field.id} className="mb-4">
-                    <label className="block mb-1 font-semibold">{field.label}{field.required ? ' *' : ''}</label>
-                    <textarea
-                      placeholder={field.placeholder}
-                      required={field.required}
-                      className="border rounded p-2 w-full"
-                    />
-                  </div>
-                );
-              }
-              if (field.type === 'Date') {
-                return (
-                  <div key={field.id} className="mb-4">
-                    <label className="block mb-1 font-semibold">{field.label}{field.required ? ' *' : ''}</label>
-                    <input
-                      type="date"
-                      required={field.required}
-                      className="border rounded p-2 w-full"
-                    />
-                  </div>
-                );
-              }
-              if (field.type === 'Dropdown') {
-                return (
-                  <div key={field.id} className="mb-4">
-                    <label className="block mb-1 font-semibold">{field.label}{field.required ? ' *' : ''}</label>
-                    <select
-                      required={field.required}
-                      className="border rounded p-2 w-full"
-                    >
-                      <option value="">Select...</option>
-                      {(field.options || '').split(',').map((opt, i) => (
-                        <option key={i} value={opt.trim()}>{opt.trim()}</option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-              if (field.type === 'Checkbox') {
-                return (
-                  <div key={field.id} className="mb-4 flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      required={field.required}
-                      id={`chk_${field.id}`}
-                    />
-                    <label htmlFor={`chk_${field.id}`} className="font-semibold">{field.label}</label>
-                  </div>
-                );
-              }
-              return null;
-            })}
+          <div className="flex gap-2 mt-4 flex-wrap">
             <button
-              type="submit"
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              onClick={undo}
+              disabled={past.length === 0}
+              className={`px-4 py-2 rounded ${past.length === 0 ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'}`}
             >
-              Submit
+              Undo
             </button>
-          </form>
-        )}
-      </div>
-    );
-  }
+            <button
+              onClick={redo}
+              disabled={future.length === 0}
+              className={`px-4 py-2 rounded ${future.length === 0 ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'}`}
+            >
+              Redo
+            </button>
+            <button
+              onClick={generateLink}
+              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+            >
+              Copy Shareable Link
+            </button>
+          </div>
+          {copiedLink && <div className="copy-link-box">{copiedLink}</div>}
+        </>
+      )}
 
-  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+      {fields.length > 0 && (
+        <form ref={formRef} className={`mt-8 p-6 rounded shadow form-preview ${templateClass}`} onSubmit={onSubmit}>
+          {fields.map(field => {
+            const label = <label className="block mb-1 font-semibold">{field.label}{field.required ? ' *' : ''}</label>;
+            if (field.type === 'Text') return <div key={field.id} className="mb-4">{label}<input type="text" placeholder={field.placeholder} required={field.required} className="border rounded p-2 w-full" /></div>;
+            if (field.type === 'Textarea') return <div key={field.id} className="mb-4">{label}<textarea placeholder={field.placeholder} required={field.required} className="border rounded p-2 w-full" /></div>;
+            if (field.type === 'Date') return <div key={field.id} className="mb-4">{label}<input type="date" required={field.required} className="border rounded p-2 w-full" /></div>;
+            if (field.type === 'Dropdown') return <div key={field.id} className="mb-4">{label}<select required={field.required} className="border rounded p-2 w-full"><option value="">Select...</option>{(field.options || '').split(',').map((opt, i) => <option key={i} value={opt.trim()}>{opt.trim()}</option>)}</select></div>;
+            if (field.type === 'Checkbox') return <div key={field.id} className="mb-4 flex items-center gap-2"><input type="checkbox" required={field.required} id={`chk_${field.id}`} /><label htmlFor={`chk_${field.id}`} className="font-semibold">{field.label}</label></div>;
+            return null;
+          })}
+          <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit</button>
+        </form>
+      )}
+    </div>
+  );
+}
 
-  document.getElementById('themeToggle').addEventListener('click', () => {
-    const current = document.body.className;
-    if (current === 'light') {
-      document.body.className = 'dark';
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.body.className = 'light';
-      localStorage.setItem('theme', 'light');
-    }
-  });
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const current = document.body.className;
+  const newTheme = current === 'light' ? 'dark' : 'light';
+  document.body.className = newTheme;
+  localStorage.setItem('theme', newTheme);
+});
 </script>
 </body>
 </html>
