@@ -24,9 +24,18 @@
       background-color: #374151;
       color: #93c5fd;
     }
-    .field-card {
-      @apply p-4 bg-white dark:bg-gray-800 rounded shadow mb-3;
-    }
+.field-card {
+  padding: 1rem; /* p-4 */
+  background-color: #ffffff; /* bg-white */
+  border-radius: 0.5rem; /* rounded */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06); /* shadow */
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+body.dark .field-card {
+  background-color: #1f2937; /* dark:bg-gray-800 */
+}
+
     .template-contact {
       background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
       border-left: 6px solid #3b82f6;
