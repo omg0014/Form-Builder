@@ -1,4 +1,3 @@
-<!-- [ FULL UPDATED HTML CODE — scroll to view entire file ] -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,6 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    /* [ ... keep all your existing styles unchanged ... ] */
     body {
       transition: background-color 0.3s, color 0.3s;
     }
@@ -32,6 +30,7 @@
       border-radius: 0.5rem;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
       margin-bottom: 0.75rem;
+      user-select: none;
     }
     body.dark .field-card {
       background-color: #1f2937;
@@ -96,6 +95,11 @@
       outline: 2px solid #3b82f6;
       outline-offset: 2px;
     }
+    /* Highlight drag over */
+    .drag-over {
+      border: 2px dashed #3b82f6;
+      background-color: #bfdbfe99;
+    }
   </style>
 </head>
 <body class="light">
@@ -116,12 +120,12 @@ function App() {
   const formId = urlParams.get('id');
   const [history, setHistory] = useState({ past: [], present: [], future: [] });
   const [templateClass, setTemplateClass] = useState('');
-  const [formBg] = useState(localStorage.getItem('formBg') || '');
   const [copiedLink, setCopiedLink] = useState('');
   const isPreview = mode === 'preview' || (mode !== 'edit' && !!formId);
   const { past, present: fields, future } = history;
   const formRef = useRef(null);
   const [selectedFieldId, setSelectedFieldId] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     document.body.className = localStorage.getItem('theme') || 'light';
@@ -220,24 +224,60 @@ function App() {
     setCopiedLink(url);
   }
 
+  // Drag & drop handlers
+
   const handleDrop = (e) => {
     e.preventDefault();
+    setDragOver(false);
+
+    // If dragging from add buttons (fieldType)
     let type = e.dataTransfer.getData('fieldType');
-    if (!type && e.target?.dataset?.fieldType) {
-      type = e.target.dataset.fieldType;
+
+    // If dragging reorder of fields (fieldId)
+    const draggedFieldId = e.dataTransfer.getData('fieldId');
+
+    if (type) {
+      addField(type);
+    } else if (draggedFieldId) {
+      const fromId = parseInt(draggedFieldId, 10);
+      // Determine index where dropped (approximate)
+      const dropTarget = e.target.closest('.field-card');
+      if (!dropTarget) return;
+      const toId = parseInt(dropTarget.dataset.id, 10);
+      if (fromId !== toId) {
+        reorderFields(fromId, toId);
+      }
     }
-    if (type) addField(type);
   };
 
-  const allowDrop = (e) => e.preventDefault();
+  const allowDrop = (e) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
 
-  const swapFields = (id1, id2) => {
-    const idx1 = fields.findIndex(f => f.id === id1);
-    const idx2 = fields.findIndex(f => f.id === id2);
-    if (idx1 !== -1 && idx2 !== -1) {
-      const updated = [...fields];
-      [updated[idx1], updated[idx2]] = [updated[idx2], updated[idx1]];
-      setFields(updated);
+  const handleDragLeave = (e) => {
+    setDragOver(false);
+  };
+
+  // Reorder fields helper
+  const reorderFields = (fromId, toId) => {
+    const idxFrom = fields.findIndex(f => f.id === fromId);
+    const idxTo = fields.findIndex(f => f.id === toId);
+    if (idxFrom === -1 || idxTo === -1) return;
+    let updated = [...fields];
+    const [moved] = updated.splice(idxFrom, 1);
+    updated.splice(idxTo, 0, moved);
+    setFields(updated);
+  };
+
+  // Mobile tap-to-reorder: select a field, then tap second field to swap
+
+  const onFieldTouch = (id) => {
+    if (selectedFieldId && selectedFieldId !== id) {
+      reorderFields(selectedFieldId, id);
+      setSelectedFieldId(null);
+    } else {
+      setSelectedFieldId(id);
     }
   };
 
@@ -247,144 +287,322 @@ function App() {
     <div className="max-w-2xl mx-auto">
       {!isPreview && (
         <>
-          <div className="mb-2 text-sm text-gray-600">
-            <strong>Desktop:</strong> Drag & drop fields. <strong>Mobile:</strong> Tap two fields to reorder them.
+          <div className="mb-2 text-sm text-gray-600 select-none">
+            <strong>Desktop:</strong> Drag & drop fields. <strong>Mobile/Tablet:</strong> Tap a field type button to add fields. Tap two fields to reorder them.
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4 select-none">
             {fieldTypes.map(ft => (
               <button
                 key={ft}
                 draggable
                 onDragStart={e => e.dataTransfer.setData('fieldType', ft)}
-                className="bg-blue-600 text-white px-3 py-1 rounded"
+                onClick={() => addField(ft)}
+                className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                aria-label={`Add ${ft} field`}
               >
                 Add {ft}
               </button>
             ))}
           </div>
 
-          <div className="mb-4 flex gap-2 flex-wrap">
-            <button onClick={() => applyTemplate('contact')} className="template-contact">Contact Form</button>
-            <button onClick={() => applyTemplate('feedback')} className="template-feedback">Feedback Form</button>
-            <button onClick={() => applyTemplate('registration')} className="template-registration">Registration Form</button>
-            <button onClick={() => applyTemplate('survey')} className="template-survey">Survey Form</button>
+          <div className="mb-4 space-x-2 select-none">
+            <button onClick={() => applyTemplate('contact')} className="px-3 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600">Contact Template</button>
+            <button onClick={() => applyTemplate('feedback')} className="px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600">Feedback Template</button>
+            <button onClick={() => applyTemplate('registration')} className="px-3 py-1 rounded bg-purple-500 text-white hover:bg-purple-600">Registration Template</button>
+            <button onClick={() => applyTemplate('survey')} className="px-3 py-1 rounded bg-yellow-400 text-white hover:bg-yellow-500">Survey Template</button>
           </div>
 
-          <div
-            className={`p-4 rounded shadow ${formBg} min-h-[200px]`}
+          <form
+            ref={formRef}
+            className={`form-builder ${templateClass} p-4 rounded-md border border-gray-300 dark:border-gray-700`}
             onDrop={handleDrop}
             onDragOver={allowDrop}
+            onDragLeave={handleDragLeave}
+            aria-label="Form builder area. Drag fields here to add or reorder."
           >
-            {fields.length === 0 && (
-              <p className="text-gray-400">Drag and drop a field here or click buttons above</p>
-            )}
+            {fields.length === 0 && <p className="text-gray-500">No fields added yet. Drag or tap to add fields.</p>}
             {fields.map(field => (
-              <div
+              <FieldEditor
                 key={field.id}
-                className={`field-card flex flex-col ${selectedFieldId === field.id ? 'ring-2 ring-indigo-500' : ''}`}
-                draggable
+                field={field}
+                updateField={updateField}
+                deleteField={deleteField}
+                draggable={!isPreview}
                 onDragStart={e => e.dataTransfer.setData('fieldId', field.id)}
-                onTouchStart={() => {
-                  if (selectedFieldId && selectedFieldId !== field.id) {
-                    swapFields(selectedFieldId, field.id);
-                    setSelectedFieldId(null);
-                  } else {
-                    setSelectedFieldId(field.id);
-                  }
-                }}
-              >
-                <input
-                  className="border rounded p-1 mb-1"
-                  type="text"
-                  placeholder="Label"
-                  value={field.label}
-                  onChange={e => updateField(field.id, { label: e.target.value })}
-                />
-                {field.type === 'Dropdown' && (
-                  <input
-                    className="border rounded p-1 mb-1"
-                    type="text"
-                    placeholder="Options comma separated"
-                    value={field.options || ''}
-                    onChange={e => updateField(field.id, { options: e.target.value })}
-                  />
-                )}
-                <input
-                  className="border rounded p-1 mb-1"
-                  placeholder="Placeholder"
-                  value={field.placeholder}
-                  onChange={e => updateField(field.id, { placeholder: e.target.value })}
-                />
-                <label className="mb-1">
-                  <input
-                    type="checkbox"
-                    checked={field.required}
-                    onChange={e => updateField(field.id, { required: e.target.checked })}
-                  /> Required
-                </label>
-                <button
-                  className="bg-red-600 text-white px-2 py-1 rounded self-start"
-                  onClick={() => deleteField(field.id)}
-                >
-                  Delete
-                </button>
-              </div>
+                onClick={() => onFieldTouch(field.id)}
+                isSelected={selectedFieldId === field.id}
+              />
             ))}
-          </div>
+          </form>
 
-          <div className="flex gap-2 mt-4 flex-wrap">
+          <div className="flex gap-2 mt-4">
             <button
               onClick={undo}
               disabled={past.length === 0}
-              className={`px-4 py-2 rounded ${past.length === 0 ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'}`}
+              className="px-4 py-2 bg-gray-600 text-white rounded disabled:bg-gray-400"
+              aria-disabled={past.length === 0}
             >
               Undo
             </button>
             <button
               onClick={redo}
               disabled={future.length === 0}
-              className={`px-4 py-2 rounded ${future.length === 0 ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'}`}
+              className="px-4 py-2 bg-gray-600 text-white rounded disabled:bg-gray-400"
+              aria-disabled={future.length === 0}
             >
               Redo
             </button>
             <button
               onClick={generateLink}
-              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+              disabled={fields.length === 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-blue-300"
+              aria-disabled={fields.length === 0}
             >
               Copy Shareable Link
             </button>
           </div>
-          {copiedLink && <div className="copy-link-box">{copiedLink}</div>}
+          {copiedLink && (
+            <div
+              className="copy-link-box"
+              role="alert"
+              aria-live="polite"
+              tabIndex={0}
+            >
+              {copiedLink}
+            </div>
+          )}
         </>
       )}
 
-      {fields.length > 0 && (
-        <form ref={formRef} className={`mt-8 p-6 rounded shadow form-preview ${templateClass}`} onSubmit={onSubmit}>
-          {fields.map(field => {
-            const label = <label className="block mb-1 font-semibold">{field.label}{field.required ? ' *' : ''}</label>;
-            if (field.type === 'Text') return <div key={field.id} className="mb-4">{label}<input type="text" placeholder={field.placeholder} required={field.required} className="border rounded p-2 w-full" /></div>;
-            if (field.type === 'Textarea') return <div key={field.id} className="mb-4">{label}<textarea placeholder={field.placeholder} required={field.required} className="border rounded p-2 w-full" /></div>;
-            if (field.type === 'Date') return <div key={field.id} className="mb-4">{label}<input type="date" required={field.required} className="border rounded p-2 w-full" /></div>;
-            if (field.type === 'Dropdown') return <div key={field.id} className="mb-4">{label}<select required={field.required} className="border rounded p-2 w-full"><option value="">Select...</option>{(field.options || '').split(',').map((opt, i) => <option key={i} value={opt.trim()}>{opt.trim()}</option>)}</select></div>;
-            if (field.type === 'Checkbox') return <div key={field.id} className="mb-4 flex items-center gap-2"><input type="checkbox" required={field.required} id={`chk_${field.id}`} /><label htmlFor={`chk_${field.id}`} className="font-semibold">{field.label}</label></div>;
-            return null;
-          })}
-          <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit</button>
-        </form>
+      {isPreview && (
+        <div className="form-preview p-6 rounded-md border border-gray-400 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl font-semibold mb-4">Form Preview</h2>
+          {fields.length === 0 && <p>No form data to preview.</p>}
+          <form onSubmit={onSubmit} aria-label="Preview form">
+            {fields.map(field => (
+              <FieldPreview key={field.id} field={field} />
+            ))}
+            {fields.length > 0 && (
+              <button
+                type="submit"
+                className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                Submit
+              </button>
+            )}
+          </form>
+        </div>
       )}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+function FieldEditor({ field, updateField, deleteField, draggable, onDragStart, onClick, isSelected }) {
+  const { id, type, label, placeholder, required, min, max, options } = field;
 
+  const labelId = `label-${id}`;
+
+  return (
+    <div
+      className={`field-card border ${isSelected ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-300'} dark:border-gray-600 cursor-pointer`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onClick={onClick}
+      data-id={id}
+      role="group"
+      aria-labelledby={labelId}
+      tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === 'Delete' || e.key === 'Backspace') deleteField(id);
+      }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <input
+          id={labelId}
+          type="text"
+          value={label}
+          placeholder="Field label"
+          onChange={e => updateField(id, { label: e.target.value })}
+          className="w-2/3 border border-gray-300 rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-200"
+          aria-label="Edit field label"
+        />
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            deleteField(id);
+          }}
+          aria-label="Delete field"
+          className="text-red-600 hover:text-red-800 ml-2 font-bold text-xl leading-none focus:outline-none"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div className="mb-2">
+        <select
+          value={type}
+          onChange={e => updateField(id, { type: e.target.value })}
+          className="w-full border border-gray-300 rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-200"
+          aria-label="Select field type"
+          disabled
+        >
+          <option>Text</option>
+          <option>Textarea</option>
+          <option>Date</option>
+          <option>Dropdown</option>
+          <option>Checkbox</option>
+        </select>
+      </div>
+
+      {(type === 'Text' || type === 'Textarea') && (
+        <input
+          type="text"
+          value={placeholder}
+          onChange={e => updateField(id, { placeholder: e.target.value })}
+          placeholder="Placeholder"
+          className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-2 dark:bg-gray-700 dark:text-gray-200"
+          aria-label="Edit placeholder"
+        />
+      )}
+
+      {type === 'Dropdown' && (
+        <textarea
+          value={options}
+          onChange={e => updateField(id, { options: e.target.value })}
+          placeholder="Dropdown options, comma separated"
+          className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-2 dark:bg-gray-700 dark:text-gray-200"
+          aria-label="Edit dropdown options"
+        />
+      )}
+
+      <label className="inline-flex items-center text-sm">
+        <input
+          type="checkbox"
+          checked={required}
+          onChange={e => updateField(id, { required: e.target.checked })}
+          className="mr-1"
+          aria-checked={required}
+        />
+        Required
+      </label>
+
+      {(type === 'Text' || type === 'Date') && (
+        <div className="flex gap-2 mt-2 text-sm">
+          <input
+            type={type === 'Date' ? 'date' : 'number'}
+            value={min}
+            onChange={e => updateField(id, { min: e.target.value })}
+            placeholder="Min"
+            className="w-1/2 border border-gray-300 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+            aria-label="Minimum value"
+          />
+          <input
+            type={type === 'Date' ? 'date' : 'number'}
+            value={max}
+            onChange={e => updateField(id, { max: e.target.value })}
+            placeholder="Max"
+            className="w-1/2 border border-gray-300 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+            aria-label="Maximum value"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FieldPreview({ field }) {
+  const { type, label, placeholder, required, min, max, options } = field;
+
+  const id = `preview-${field.id}`;
+
+  switch (type) {
+    case 'Text':
+      return (
+        <div className="mb-4">
+          <label htmlFor={id} className="block font-semibold mb-1">{label}{required && '*'}</label>
+          <input
+            id={id}
+            type="text"
+            placeholder={placeholder}
+            required={required}
+            minLength={min || undefined}
+            maxLength={max || undefined}
+            className="w-full border border-gray-400 rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-100"
+          />
+        </div>
+      );
+    case 'Textarea':
+      return (
+        <div className="mb-4">
+          <label htmlFor={id} className="block font-semibold mb-1">{label}{required && '*'}</label>
+          <textarea
+            id={id}
+            placeholder={placeholder}
+            required={required}
+            className="w-full border border-gray-400 rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-100"
+          />
+        </div>
+      );
+    case 'Date':
+      return (
+        <div className="mb-4">
+          <label htmlFor={id} className="block font-semibold mb-1">{label}{required && '*'}</label>
+          <input
+            id={id}
+            type="date"
+            required={required}
+            min={min || undefined}
+            max={max || undefined}
+            className="w-full border border-gray-400 rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-100"
+          />
+        </div>
+      );
+    case 'Dropdown':
+      const opts = options.split(',').map(o => o.trim()).filter(Boolean);
+      return (
+        <div className="mb-4">
+          <label htmlFor={id} className="block font-semibold mb-1">{label}{required && '*'}</label>
+          <select
+            id={id}
+            required={required}
+            className="w-full border border-gray-400 rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-100"
+            defaultValue=""
+          >
+            <option value="" disabled>Select an option</option>
+            {opts.map((opt, i) => (
+              <option key={i} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      );
+    case 'Checkbox':
+      return (
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            id={id}
+            type="checkbox"
+            required={required}
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+          />
+          <label htmlFor={id} className="font-semibold">{label}{required && '*'}</label>
+        
+        </div>
+    );
+    default:
+      return null;
+  }
+}
+
+// Theme toggle button outside React tree
 document.getElementById('themeToggle').addEventListener('click', () => {
   const current = document.body.className;
-  const newTheme = current === 'light' ? 'dark' : 'light';
-  document.body.className = newTheme;
-  localStorage.setItem('theme', newTheme);
+  const next = current === 'light' ? 'dark' : 'light';
+  document.body.className = next;
+  localStorage.setItem('theme', next);
 });
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
 </body>
 </html>
