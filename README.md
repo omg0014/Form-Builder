@@ -29,7 +29,7 @@ Easily design, preview, and share forms with no server or setup required.
 
 ## 🚀 Getting Started
 
-Simply open the `index.html` file in any modern browser — no installation or build tools needed.
+Simply open the link :- https://omg0014.github.io/Form-Builder/ in any modern browser — no installation or build tools needed.
 
 All your form data is automatically saved to `localStorage`, so you can pick up where you left off.
 
