@@ -416,7 +416,7 @@ function App() {
 }
 
 function FieldEditor({ field, updateField, deleteField, draggable, onDragStart, onClick, isSelected }) {
-  const { id, type, label, placeholder, required, min, max, options } = field;
+  const { id, type, label, placeholder, required, min, max, options, pattern } = field;
 
   const labelId = `label-${id}`;
 
@@ -462,7 +462,6 @@ function FieldEditor({ field, updateField, deleteField, draggable, onDragStart, 
           onChange={e => updateField(id, { type: e.target.value })}
           className="w-full border border-gray-300 rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-200"
           aria-label="Select field type"
-          disabled
         >
           <option>Text</option>
           <option>Textarea</option>
@@ -524,13 +523,23 @@ function FieldEditor({ field, updateField, deleteField, draggable, onDragStart, 
           />
         </div>
       )}
+
+      {type === 'Text' && (
+        <input
+          type="text"
+          value={pattern || ''}
+          onChange={e => updateField(id, { pattern: e.target.value })}
+          placeholder="Regex pattern (optional)"
+          className="w-full border border-gray-300 rounded px-2 py-1 text-sm mt-2 dark:bg-gray-700 dark:text-gray-200"
+          aria-label="Pattern (regex)"
+        />
+      )}
     </div>
   );
 }
 
 function FieldPreview({ field }) {
-  const { type, label, placeholder, required, min, max, options } = field;
-
+  const { type, label, placeholder, required, min, max, options, pattern } = field;
   const id = `preview-${field.id}`;
 
   switch (type) {
@@ -545,6 +554,7 @@ function FieldPreview({ field }) {
             required={required}
             minLength={min || undefined}
             maxLength={max || undefined}
+            pattern={pattern || undefined}
             className="w-full border border-gray-400 rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-100"
           />
         </div>
@@ -603,9 +613,8 @@ function FieldPreview({ field }) {
             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
           />
           <label htmlFor={id} className="font-semibold">{label}{required && '*'}</label>
-        
         </div>
-    );
+      );
     default:
       return null;
   }
