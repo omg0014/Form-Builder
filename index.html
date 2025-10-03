@@ -284,7 +284,24 @@ function App() {
   const fieldTypes = ['Text', 'Textarea', 'Date', 'Dropdown', 'Checkbox'];
 
   return (
-    <div className="max-w-2xl mx-auto">
+<div className="max-w-2xl mx-auto">
+  {!isPreview && (
+    <>
+      {/* Video Tutorial Section */}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold mb-2">How to Use the Form Builder</h2>
+        <video 
+          controls 
+          className="w-full rounded-lg shadow-md"
+          poster="thumbnail.jpg" // optional thumbnail
+        >
+          <source src="explain.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </>
+  )}
+
       {!isPreview && (
         <>
           <div className="mb-2 text-sm text-gray-600 select-none">
